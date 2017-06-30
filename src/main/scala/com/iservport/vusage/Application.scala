@@ -10,20 +10,13 @@ import org.apache.spark.sql.SparkSession
   */
 object Application extends App {
 
-  @transient lazy val session = SparkSession.builder().master("local").appName("vusage").getOrCreate()
-
-  val config = ConfigFactory.load()
-  val mongoUri = config.getString("mongoUri")
-
+  import ApplicationConfig._
   import session.implicits._
-  val rc1 = ReadConfig(Map("uri"  -> s"$mongoUri.usage?readPreference=primaryPreferred"))
-  val rc2 = ReadConfig(Map("uri"  -> s"$mongoUri.quantity?readPreference=primaryPreferred"))
-  val wc3 = WriteConfig(Map("uri" -> s"$mongoUri.expenditure"))
 
-  val usage = MongoSpark.load(session, rc1, classOf[Usage])
+  val city = MongoSpark.load(session, cityConfig, classOf[CityData]).persist()
+  val usage = MongoSpark.load(session, usageConfig, classOf[Usage])
   val us = usage.groupBy($"year", $"cityId", $"entityId", $"fuel").sum("usage").persist()
-
-  val quantity = MongoSpark.load(session, rc2, classOf[Quantity]).persist()
+  val quantity = MongoSpark.load(session, quantityConfig, classOf[Quantity]).persist()
   val qs = quantity.groupBy($"year", $"cityId", $"entityId", $"subject").avg("averagePrice").persist()
 
   val expenditure = us.join(qs,
@@ -37,7 +30,23 @@ object Application extends App {
     .drop(qs.col("entityId"))
     .drop(qs.col("subject"))
     .toDF("year", "cityId", "entityId", "fuel", "usage", "averagePrice", "expenditure")
+    .join(city, "cityId")
+    .withColumn("expenditureByArea", $"expenditure" / $"area")
+    .withColumn("expenditureByInhabitant", $"expenditure" / $"population")
 
-  MongoSpark.save(expenditure.write.mode("overwrite"), wc3)
+  MongoSpark.save(expenditure.write.mode("overwrite"), expenditureConfig)
+
+}
+object ApplicationConfig {
+
+  @transient lazy val session = SparkSession.builder().master("local").appName("vusage").getOrCreate()
+
+  val config = ConfigFactory.load()
+  val mongoUri = config.getString("mongoUri")
+
+  val usageConfig = ReadConfig(Map("uri"  -> s"$mongoUri.usage?readPreference=primaryPreferred"))
+  val quantityConfig = ReadConfig(Map("uri"  -> s"$mongoUri.quantity?readPreference=primaryPreferred"))
+  val cityConfig = ReadConfig(Map("uri"  -> s"$mongoUri.cityData?readPreference=primaryPreferred"))
+  val expenditureConfig = WriteConfig(Map("uri" -> s"$mongoUri.expenditure"))
 
 }

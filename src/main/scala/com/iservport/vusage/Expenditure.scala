@@ -3,7 +3,7 @@ package com.iservport.vusage
 import scala.beans.BeanProperty
 
 /**
-  * Gastos por cidade
+  * Expenditures by year, city, entity.
   *
   * Created by mauriciofernandesdecastro on 21/05/17.
   */
@@ -21,6 +21,10 @@ class Expenditure(
 
    @BeanProperty var averagePrice: Double,
 
-   @BeanProperty var expenditure: Double
+   @BeanProperty var expenditure: Double,
+
+   @BeanProperty var expenditureByArea: Double,
+
+   @BeanProperty var expenditureByInhabitant: Double
 
 )

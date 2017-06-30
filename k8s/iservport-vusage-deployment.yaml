@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: iservport-vusage
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: TCEPR
+    spec:
+      containers:
+      - image: docker.io/iservport/iservport-vusage:0.1.DEV
+        name: iservport-vusage
+        env:
+        - name: mongoUri
+          value: tcepr
